@@ -3,192 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MN-Pro Control</title>
+    <title>MN Electronics Control</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
         :root {
-            --primary: #2563eb;
-            --success: #10b981;
-            --danger: #ef4444;
-            --bg: #f3f4f6;
+            --primary-grad: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+            --bg-color: #f0f2f5;
             --card-bg: #ffffff;
-            --text: #1f2937;
+            --shadow: 0 10px 30px rgba(0,0,0,0.08);
         }
 
         body {
             font-family: 'Tajawal', sans-serif;
-            background-color: var(--bg);
+            background-color: var(--bg-color);
             margin: 0;
             padding: 20px;
-            color: var(--text);
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* شاشة الدخول */
-        #login-screen {
-            background: var(--card-bg);
-            padding: 40px 20px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
             text-align: center;
-            margin-top: 50px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .logo-area i { font-size: 50px; color: var(--primary); margin-bottom: 10px; }
-        
+        /* اسم الشركة */
+        .brand-header { margin-bottom: 30px; animation: fadeInDown 0.8s ease-out; }
+        .brand-name {
+            font-size: 38px; font-weight: 900; text-transform: uppercase;
+            background: linear-gradient(to right, #2563eb, #d946ef);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin: 0; letter-spacing: 1px;
+            text-shadow: 0px 5px 15px rgba(37, 99, 235, 0.2);
+        }
+        .brand-subtitle { font-size: 14px; color: #6b7280; letter-spacing: 4px; margin-top: 5px; font-weight: bold; }
+
+        .screen {
+            background: var(--card-bg); padding: 30px; border-radius: 25px;
+            box-shadow: var(--shadow); width: 100%; max-width: 450px;
+            display: none; animation: fadeInUp 0.5s ease-out; box-sizing: border-box;
+        }
+        #login-screen { display: block; }
+
         input {
-            width: 100%;
-            padding: 16px;
-            margin: 20px 0;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 20px;
-            text-align: center;
-            text-transform: uppercase;
-            font-family: monospace;
-            font-weight: bold;
-            box-sizing: border-box;
+            width: 100%; padding: 18px; margin: 25px 0;
+            border: 2px solid #e5e7eb; border-radius: 15px;
+            font-size: 20px; text-align: center; font-weight: bold;
+            text-transform: uppercase; background: #f9fafb;
+        }
+        input:focus { border-color: #2563eb; outline: none; background: #fff; }
+
+        .btn-main {
+            width: 100%; padding: 16px; background: var(--primary-grad);
+            color: white; border: none; border-radius: 15px;
+            font-size: 18px; font-weight: bold; cursor: pointer;
+        }
+
+        /* شبكة اختيار الموديل */
+        .model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .model-btn {
+            background: white; border: 2px solid #e5e7eb; padding: 15px;
+            border-radius: 15px; font-size: 16px; font-weight: bold;
+            cursor: pointer; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 10px;
             transition: 0.3s;
         }
-        input:focus { border-color: var(--primary); outline: none; }
+        .model-btn:hover { border-color: #2563eb; background: #eff6ff; }
+        .model-btn i { font-size: 24px; color: #2563eb; }
+        /* زر الـ 16 يأخذ العرض كامل */
+        .full-width { grid-column: span 2; }
 
-        button.main-btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-            font-family: 'Tajawal', sans-serif;
-        }
-
-        /* لوحة التحكم */
-        #dashboard { display: none; }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--card-bg);
-            padding: 15px 20px;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-            margin-bottom: 20px;
-        }
-
-        .device-id { font-weight: bold; color: var(--primary); }
-        .logout-btn { color: var(--danger); cursor: pointer; font-size: 20px; }
-
-        .status-bar {
-            text-align: center;
-            font-size: 12px;
-            margin-bottom: 15px;
-            color: #6b7280;
-        }
-        .connected { color: var(--success); }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 3 أعمدة */
-            gap: 12px;
-        }
+        /* شبكة الأزرار */
+        .control-grid { display: grid; gap: 10px; }
+        /* أنماط الشبكة حسب العدد */
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .grid-4 { grid-template-columns: 1fr 1fr; }
+        .grid-8 { grid-template-columns: repeat(3, 1fr); }
+        .grid-16 { grid-template-columns: repeat(4, 1fr); }
 
         .relay-card {
-            background: var(--card-bg);
-            padding: 15px 10px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            transition: transform 0.2s;
-            position: relative;
-            overflow: hidden;
+            background: #f8fafc; padding: 10px; border-radius: 15px;
+            border: 1px solid #edf2f7; position: relative;
         }
-
-        .relay-title { font-size: 14px; font-weight: bold; color: #4b5563; margin-bottom: 10px; display: block; }
+        .relay-icon { font-size: 24px; margin-bottom: 8px; transition: 0.3s; color: #cbd5e1; }
         
         .toggle-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            font-size: 24px;
-            transition: all 0.3s ease;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+            width: 100%; padding: 8px; border-radius: 10px; border: none;
+            font-weight: bold; cursor: pointer; font-family: 'Tajawal'; font-size: 12px;
         }
 
-        /* حالات الزر */
-        .btn-off { background: #e5e7eb; color: #9ca3af; }
-        .btn-on { 
-            background: linear-gradient(135deg, #10b981, #059669); 
-            color: white; 
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-            transform: scale(1.05);
+        .is-on .relay-icon { color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+        .is-on .toggle-btn { background: #10b981; color: white; }
+        .is-off .relay-icon { color: #94a3b8; }
+        .is-off .toggle-btn { background: #e2e8f0; color: #64748b; }
+
+        /* للهواتف الصغيرة جداً نعدل شبكة الـ 16 */
+        @media (max-width: 400px) {
+            .grid-16 { grid-template-columns: repeat(3, 1fr); }
+            .brand-name { font-size: 28px; }
         }
 
-        .state-text {
-            display: block;
-            margin-top: 8px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .text-on { color: var(--success); }
-        .text-off { color: #9ca3af; }
-
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div class="container">
-    
-    <div id="login-screen">
-        <div class="logo-area">
-            <i class="fas fa-microchip"></i>
-            <h2>MN Smart System</h2>
-        </div>
-        <p style="color:#6b7280;">أدخل الكود الموجود خلف الجهاز</p>
+    <div class="brand-header">
+        <h1 class="brand-name">MN ELECTRONICS</h1>
+        <div class="brand-subtitle">SMART CONTROL SYSTEMS</div>
+    </div>
+
+    <div id="login-screen" class="screen">
+        <h3>تسجيل الدخول</h3>
+        <p style="color:#9ca3af;">أدخل الكود التسلسلي للجهاز</p>
         <input type="text" id="devCode" placeholder="MN-XXXXXX" maxlength="15">
-        <button class="main-btn" onclick="connectToDevice()">دخول للنظام</button>
+        <button class="btn-main" onclick="verifyCode()">تــــابــــع</button>
     </div>
 
-    <div id="dashboard">
-        <div class="header">
-            <div>
-                <small>الجهاز المتصل</small><br>
-                <span class="device-id" id="dispCode">...</span>
-            </div>
-            <div class="logout-btn" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i>
-            </div>
+    <div id="select-screen" class="screen">
+        <h3>اختر نوع الجهاز</h3>
+        <div class="model-grid">
+            <button class="model-btn" onclick="selectModel(2)">
+                <i class="fas fa-toggle-on"></i> <span>2 خط (2CH)</span>
+            </button>
+            <button class="model-btn" onclick="selectModel(4)">
+                <i class="fas fa-th-large"></i> <span>4 خطوط (4CH)</span>
+            </button>
+            <button class="model-btn" onclick="selectModel(8)">
+                <i class="fas fa-th"></i> <span>8 خطوط (8CH)</span>
+            </button>
+            <button class="model-btn" onclick="selectModel(16)">
+                <i class="fas fa-cubes"></i> <span>16 خط (16CH)</span>
+            </button>
         </div>
-
-        <div class="status-bar">
-            <i class="fas fa-wifi"></i> حالة السيرفر: <span id="connStatus">جاري الاتصال...</span>
-        </div>
-
-        <div class="grid" id="relays-grid">
-            </div>
     </div>
 
-</div>
+    <div id="dashboard" class="screen" style="max-width: 800px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <div><span style="font-size:12px; color:#999;">ID:</span> <span id="dispCode" style="color:#2563eb; font-weight:bold;">...</span></div>
+            <div onclick="logout()" style="color:#ef4444; cursor:pointer; font-size:14px;"><i class="fas fa-sign-out-alt"></i> خروج</div>
+        </div>
+
+        <div id="buttons-container" class="control-grid"></div>
+    </div>
 
 <script>
-    // إعدادات فايربيس
+    // ⚠️ نفس إعدادات الفايربيس السابقة
     const firebaseConfig = {
         databaseURL: "https://mn-pro-default-rtdb.firebaseio.com/"
     };
@@ -197,91 +162,86 @@
     const db = firebase.database();
     let myDeviceID = "";
 
-    // عند فتح الصفحة، تحقق من وجود كود محفوظ
     window.onload = function() {
-        const saved = localStorage.getItem("mn_device_sn");
-        if(saved) {
-            document.getElementById('devCode').value = saved;
-            connectToDevice();
+        const savedID = localStorage.getItem("mn_device_sn");
+        const savedCount = localStorage.getItem("mn_relay_count");
+        if(savedID) {
+            document.getElementById('devCode').value = savedID;
+            myDeviceID = savedID;
+            if(savedCount) selectModel(parseInt(savedCount), true);
+            else goToSelectScreen();
         }
     };
 
-    function connectToDevice() {
+    function verifyCode() {
         const code = document.getElementById('devCode').value.trim().toUpperCase();
-        if(code.length < 5) {
-            alert("⚠️ يرجى إدخال كود جهاز صحيح");
-            return;
-        }
-
+        if(code.length < 5) return alert("الرجاء إدخال كود صحيح");
         myDeviceID = code;
         localStorage.setItem("mn_device_sn", myDeviceID);
+        goToSelectScreen();
+    }
 
-        // تبديل الشاشات
+    function goToSelectScreen() {
         document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('select-screen').style.display = 'block';
+    }
+
+    function selectModel(count, skipSave = false) {
+        if(!skipSave) localStorage.setItem("mn_relay_count", count);
+
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('select-screen').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('dispCode').innerText = myDeviceID;
 
-        // مراقبة الاتصال بالسيرفر
-        db.ref('.info/connected').on('value', function(snap) {
-            const statusEl = document.getElementById('connStatus');
-            if (snap.val() === true) {
-                statusEl.innerText = "متصل ✅";
-                statusEl.classList.add('connected');
-            } else {
-                statusEl.innerText = "غير متصل ❌";
-                statusEl.classList.remove('connected');
-            }
-        });
+        const container = document.getElementById('buttons-container');
+        // تطبيق كلاس الشبكة المناسب
+        container.className = 'control-grid'; // Reset
+        if(count === 2) container.classList.add('grid-2');
+        else if(count === 4) container.classList.add('grid-4');
+        else if(count === 8) container.classList.add('grid-8');
+        else if(count === 16) container.classList.add('grid-16');
 
-        generateButtons();
+        generateButtons(count);
     }
 
     function logout() {
         localStorage.removeItem("mn_device_sn");
+        localStorage.removeItem("mn_relay_count");
         location.reload();
     }
 
-    // توليد 9 أزرار
-    function generateButtons() {
-        const grid = document.getElementById('relays-grid');
-        grid.innerHTML = "";
-
-        for(let i=0; i<9; i++) {
-            grid.innerHTML += `
-                <div class="relay-card">
-                    <span class="relay-title">خط ${i+1}</span>
-                    <button id="btn-${i}" class="toggle-btn btn-off" onclick="toggleRelay(${i})">
-                        <i class="fas fa-power-off"></i>
-                    </button>
-                    <span id="txt-${i}" class="state-text text-off">مطفأ</span>
-                </div>
-            `;
+    function generateButtons(count) {
+        const container = document.getElementById('buttons-container');
+        container.innerHTML = "";
+        for(let i=0; i<count; i++) {
+            container.innerHTML += `
+                <div class="relay-card is-off" id="card-${i}">
+                    <div style="font-size:10px; color:#999; margin-bottom:5px;">R${i+1}</div>
+                    <i class="fas fa-lightbulb relay-icon"></i>
+                    <button class="toggle-btn" onclick="toggleRelay(${i})">تشغيل</button>
+                </div>`;
             listenToRelay(i);
         }
     }
 
-    // الاستماع للتغييرات الحية
-    function listenToRelay(index) {
-        db.ref('devices/' + myDeviceID + '/r' + index).on('value', (snap) => {
-            const state = snap.val();
-            const btn = document.getElementById('btn-' + index);
-            const txt = document.getElementById('txt-' + index);
-
-            if(state == 1) {
-                btn.className = "toggle-btn btn-on";
-                txt.innerText = "يعمل";
-                txt.className = "state-text text-on";
+    function listenToRelay(i) {
+        db.ref('devices/' + myDeviceID + '/r' + i).on('value', (snap) => {
+            const val = snap.val();
+            const card = document.getElementById('card-' + i);
+            const btn = card.querySelector('button');
+            if(val == 1) { 
+                card.className = "relay-card is-on";
+                btn.innerText = "إطفاء";
             } else {
-                btn.className = "toggle-btn btn-off";
-                txt.innerText = "مطفأ";
-                txt.className = "state-text text-off";
+                card.className = "relay-card is-off";
+                btn.innerText = "تشغيل";
             }
         });
     }
 
-    // إرسال الأمر (عكس الحالة الحالية)
-    function toggleRelay(index) {
-        const ref = db.ref('devices/' + myDeviceID + '/r' + index);
+    function toggleRelay(i) {
+        const ref = db.ref('devices/' + myDeviceID + '/r' + i);
         ref.once('value', (snap) => {
             const current = snap.val() || 0;
             ref.set(current == 1 ? 0 : 1);
