@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MN Electronics Control</title>
+    <title>MN Electronics</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -16,15 +16,24 @@
             --primary-grad: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
             --bg-color: #f0f2f5;
             --card-bg: #ffffff;
+            --shadow: 0 10px 30px rgba(0,0,0,0.08);
         }
 
         body {
-            font-family: 'Tajawal', sans-serif; background-color: var(--bg-color);
-            margin: 0; padding: 20px; text-align: center;
-            min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            -webkit-tap-highlight-color: transparent; /* إزالة وميض اللمس */
         }
 
-        .brand-header { margin-bottom: 20px; animation: fadeInDown 0.8s ease-out; }
+        /* 1. ترويسة الشركة */
+        .brand-header { margin-bottom: 30px; animation: fadeInDown 0.8s ease-out; }
         .brand-name {
             font-size: 38px; font-weight: 900; text-transform: uppercase;
             background: linear-gradient(to right, #2563eb, #d946ef);
@@ -34,48 +43,86 @@
         }
         .brand-subtitle { font-size: 14px; color: #6b7280; letter-spacing: 4px; margin-top: 5px; font-weight: bold; }
 
+        /* الحاويات */
         .screen {
             background: var(--card-bg); padding: 30px; border-radius: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; max-width: 450px;
+            box-shadow: var(--shadow); width: 100%; max-width: 450px;
             display: none; animation: fadeInUp 0.5s ease-out; box-sizing: border-box;
         }
         #login-screen { display: block; }
 
-        input[type="text"] {
+        input {
             width: 100%; padding: 18px; margin: 25px 0;
             border: 2px solid #e5e7eb; border-radius: 15px;
             font-size: 20px; text-align: center; font-weight: bold;
             text-transform: uppercase; background: #f9fafb;
         }
+        input:focus { border-color: #2563eb; outline: none; background: #fff; }
+
+        /* الأزرار الرئيسية */
         .btn-main {
             width: 100%; padding: 16px; background: var(--primary-grad);
             color: white; border: none; border-radius: 15px;
             font-size: 18px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            transition: transform 0.1s;
         }
+        .btn-main:active { transform: scale(0.98); }
 
-        .control-grid { display: grid; gap: 15px; grid-template-columns: 1fr 1fr; }
+        /* شبكة اختيار الموديل */
+        .model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .model-btn {
+            background: white; border: 2px solid #e5e7eb; padding: 15px;
+            border-radius: 15px; font-size: 16px; font-weight: bold;
+            cursor: pointer; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 10px;
+            transition: 0.2s;
+        }
+        .model-btn:active { background: #eff6ff; border-color: #2563eb; transform: scale(0.95); }
+        .model-btn i { font-size: 24px; color: #2563eb; }
+
+        /* شبكة التحكم */
+        .control-grid { display: grid; gap: 12px; margin-top: 15px; }
+        /* تخصيص الأعمدة حسب العدد */
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .grid-4 { grid-template-columns: 1fr 1fr; }
+        .grid-8 { grid-template-columns: repeat(3, 1fr); }
         .grid-16 { grid-template-columns: repeat(4, 1fr); }
-        @media (max-width: 600px) { .grid-16 { grid-template-columns: repeat(3, 1fr); } }
 
         .relay-card {
-            background: #f8fafc; padding: 15px; border-radius: 18px;
-            border: 1px solid #edf2f7; position: relative; transition: 0.3s;
+            background: #f8fafc; padding: 15px 5px; border-radius: 15px;
+            border: 1px solid #edf2f7; text-align: center;
+            transition: 0.2s; position: relative;
         }
-        .relay-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .relay-title { font-size: 14px; font-weight: bold; color: #64748b; }
-        .timer-icon { color: #2563eb; cursor: pointer; background: #eff6ff; padding: 8px; border-radius: 50%; }
-        .relay-icon-main { font-size: 30px; display: block; margin: 10px auto; color: #cbd5e1; }
-        .toggle-btn { width: 100%; padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; }
-        
-        /* إعدادات المؤقت */
-        .timer-settings { display: none; margin-top: 15px; background: #fff; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 12px; }
-        .timer-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .timer-input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px; width: 90px; text-align: center; }
 
-        .is-on .relay-icon-main { color: #10b981; filter: drop-shadow(0 0 5px rgba(16,185,129,0.5)); }
-        .is-on .toggle-btn { background: #10b981; color: white; }
-        .is-off .relay-icon-main { color: #94a3b8; }
-        .is-off .toggle-btn { background: #e2e8f0; color: #64748b; }
+        .relay-title { font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 8px; display: block; }
+        
+        .toggle-btn {
+            width: 60px; height: 60px; border-radius: 50%; border: none;
+            cursor: pointer; font-size: 22px; transition: all 0.15s ease-out;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex; align-items: center; justify-content: center; margin: 0 auto;
+        }
+        
+        /* حالات الزر */
+        .is-on .toggle-btn { 
+            background: #10b981; color: white; 
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.5); 
+            transform: scale(1.05);
+        }
+        .is-off .toggle-btn { background: #e2e8f0; color: #94a3b8; }
+        
+        /* حالة النص */
+        .status-text { font-size: 12px; font-weight: bold; margin-top: 8px; display: block; }
+        .is-on .status-text { color: #10b981; }
+        .is-off .status-text { color: #94a3b8; }
+
+        /* تعديل للهواتف الصغيرة */
+        @media (max-width: 400px) {
+            .grid-8 { grid-template-columns: 1fr 1fr; }
+            .grid-16 { grid-template-columns: repeat(3, 1fr); }
+            .brand-name { font-size: 28px; }
+        }
 
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -90,33 +137,49 @@
 
     <div id="login-screen" class="screen">
         <h3>تسجيل الدخول</h3>
+        <p style="color:#9ca3af;">أدخل الكود التسلسلي للجهاز</p>
         <input type="text" id="devCode" placeholder="MN-XXXXXX" maxlength="15">
         <button class="btn-main" onclick="verifyCode()">تــــابــــع</button>
     </div>
 
     <div id="select-screen" class="screen">
-        <h3>اختر النظام</h3>
-        <div style="display:grid; gap:10px;">
-            <button class="btn-main" onclick="selectModel(4)" style="background:#fff; color:#333; border:2px solid #eee;">4 خطوط</button>
-            <button class="btn-main" onclick="selectModel(8)" style="background:#fff; color:#333; border:2px solid #eee;">8 خطوط</button>
-            <button class="btn-main" onclick="selectModel(16)">16 خط (MAX)</button>
+        <h3>اختر نوع الجهاز</h3>
+        <div class="model-grid">
+            <button class="model-btn" onclick="selectModel(2)">
+                <i class="fas fa-toggle-on"></i> <span>2 خط (2CH)</span>
+            </button>
+            <button class="model-btn" onclick="selectModel(4)">
+                <i class="fas fa-th-large"></i> <span>4 خطوط (4CH)</span>
+            </button>
+            <button class="model-btn" onclick="selectModel(8)">
+                <i class="fas fa-th"></i> <span>8 خطوط (8CH)</span>
+            </button>
+            <button class="model-btn" onclick="selectModel(16)">
+                <i class="fas fa-cubes"></i> <span>16 خط (16CH)</span>
+            </button>
         </div>
     </div>
 
-    <div id="dashboard" class="screen" style="max-width: 1000px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-            <div style="font-weight:bold; color:#2563eb;" id="dispCode">...</div>
-            <div onclick="logout()" style="color:#ef4444; cursor:pointer;"><i class="fas fa-sign-out-alt"></i> خروج</div>
+    <div id="dashboard" class="screen" style="max-width: 800px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <div><span style="font-size:12px; color:#999;">ID:</span> <span id="dispCode" style="color:#2563eb; font-weight:bold;">...</span></div>
+            <div onclick="logout()" style="color:#ef4444; cursor:pointer; font-size:14px;"><i class="fas fa-sign-out-alt"></i> خروج</div>
         </div>
+
         <div id="buttons-container" class="control-grid"></div>
     </div>
 
 <script>
-    const firebaseConfig = { databaseURL: "https://mn-pro-default-rtdb.firebaseio.com/" };
+    // إعدادات فايربيس
+    const firebaseConfig = {
+        databaseURL: "https://mn-pro-default-rtdb.firebaseio.com/"
+    };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     let myDeviceID = "";
 
+    // عند التحميل
     window.onload = function() {
         const savedID = localStorage.getItem("mn_device_sn");
         const savedCount = localStorage.getItem("mn_relay_count");
@@ -130,30 +193,42 @@
 
     function verifyCode() {
         const code = document.getElementById('devCode').value.trim().toUpperCase();
-        if(code.length < 5) return alert("خطأ في الكود");
+        if(code.length < 5) return alert("الرجاء إدخال كود صحيح");
         myDeviceID = code;
         localStorage.setItem("mn_device_sn", myDeviceID);
         goToSelectScreen();
     }
-    
+
     function goToSelectScreen() {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('select-screen').style.display = 'block';
     }
-    
-    function selectModel(count, skip=false) {
-        if(!skip) localStorage.setItem("mn_relay_count", count);
+
+    function selectModel(count, skipSave = false) {
+        if(!skipSave) localStorage.setItem("mn_relay_count", count);
+
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('select-screen').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         document.getElementById('dispCode').innerText = myDeviceID;
-        
-        const grid = document.getElementById('buttons-container');
-        grid.className = count >= 8 ? 'control-grid grid-16' : 'control-grid';
+
+        const container = document.getElementById('buttons-container');
+        // إزالة الكلاسات السابقة
+        container.className = 'control-grid';
+        // إضافة الكلاس المناسب للشبكة
+        if(count === 2) container.classList.add('grid-2');
+        else if(count === 4) container.classList.add('grid-4');
+        else if(count === 8) container.classList.add('grid-8');
+        else if(count === 16) container.classList.add('grid-16');
+
         generateButtons(count);
     }
-    
-    function logout() { localStorage.clear(); location.reload(); }
+
+    function logout() {
+        localStorage.removeItem("mn_device_sn");
+        localStorage.removeItem("mn_relay_count");
+        location.reload();
+    }
 
     function generateButtons(count) {
         const container = document.getElementById('buttons-container');
@@ -161,61 +236,43 @@
         for(let i=0; i<count; i++) {
             container.innerHTML += `
                 <div class="relay-card is-off" id="card-${i}">
-                    <div class="relay-header">
-                        <span class="relay-title">جهاز ${i+1}</span>
-                        <i class="fas fa-clock timer-icon" onclick="toggleTimerView(${i})"></i>
-                    </div>
-                    <i class="fas fa-power-off relay-icon-main"></i>
-                    <button class="toggle-btn" onclick="toggleRelay(${i})">تشغيل</button>
-                    <div id="timer-box-${i}" class="timer-settings">
-                        <div class="timer-row"><span><i class="fas fa-sun" style="color:#fbbf24"></i> بدء:</span><input type="time" class="timer-input" id="t-on-${i}" onchange="saveTimer(${i})"></div>
-                        <div class="timer-row"><span><i class="fas fa-moon" style="color:#64748b"></i> إيقاف:</span><input type="time" class="timer-input" id="t-off-${i}" onchange="saveTimer(${i})"></div>
-                    </div>
+                    <span class="relay-title">جهاز ${i+1}</span>
+                    <button class="toggle-btn" onclick="toggleRelay(${i})">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                    <span class="status-text" id="txt-${i}">مطفأ</span>
                 </div>`;
             listenToRelay(i);
-            loadTimer(i);
         }
     }
-    
-    function toggleTimerView(i) {
-        const box = document.getElementById(`timer-box-${i}`);
-        box.style.display = box.style.display === 'block' ? 'none' : 'block';
-    }
-    
+
     function listenToRelay(i) {
-        db.ref(`devices/${myDeviceID}/r${i}`).on('value', (snap) => {
+        // الاستماع المباشر للتغييرات
+        db.ref('devices/' + myDeviceID + '/r' + i).on('value', (snap) => {
             const val = snap.val();
-            const card = document.getElementById(`card-${i}`);
-            const btn = card.querySelector('.toggle-btn');
+            const card = document.getElementById('card-' + i);
+            const txt = document.getElementById('txt-' + i);
+            
             if(val == 1) { 
-                card.classList.replace('is-off', 'is-on');
-                btn.innerText = "إطفاء";
+                card.className = "relay-card is-on";
+                txt.innerText = "يعمل";
             } else {
-                card.classList.replace('is-on', 'is-off');
-                btn.innerText = "تشغيل";
+                card.className = "relay-card is-off";
+                txt.innerText = "مطفأ";
             }
         });
     }
-    
+
     function toggleRelay(i) {
-        const ref = db.ref(`devices/${myDeviceID}/r${i}`);
-        ref.once('value', (snap) => { ref.set(snap.val() == 1 ? 0 : 1); });
-    }
-    
-    function saveTimer(i) {
-        const onTime = document.getElementById(`t-on-${i}`).value;
-        const offTime = document.getElementById(`t-off-${i}`).value;
-        db.ref(`devices/${myDeviceID}/timers/${i}`).set({ on: onTime, off: offTime });
-    }
-    
-    function loadTimer(i) {
-        db.ref(`devices/${myDeviceID}/timers/${i}`).once('value', (snap) => {
-            if(snap.exists()) {
-                document.getElementById(`t-on-${i}`).value = snap.val().on || "";
-                document.getElementById(`t-off-${i}`).value = snap.val().off || "";
-            }
+        // الاستجابة اللحظية تتم تلقائياً بفضل مكتبة فايربيس
+        // فهي تحدث الواجهة فوراً قبل وصول الرد من السيرفر
+        const ref = db.ref('devices/' + myDeviceID + '/r' + i);
+        ref.once('value', (snap) => {
+            const current = snap.val() || 0;
+            ref.set(current == 1 ? 0 : 1);
         });
     }
 </script>
+
 </body>
 </html>
