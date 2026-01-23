@@ -128,93 +128,124 @@
     </div>
 
 <script>
-    const firebaseConfig = { databaseURL: "https://mn-pro-default-rtdb.firebaseio.com/" };
+    const firebaseConfig = {
+        databaseURL: "https://mn-pro-default-rtdb.firebaseio.com/"
+    };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    
     let myDeviceID = "";
+    // متغير لتخزين وقت آخر إشارة وصلت للمتصفح (بتوقيت جهازك أنت)
+    let lastSignalTime = 0; 
 
     window.onload = function() {
         const savedID = localStorage.getItem("mn_device_sn");
         const savedCount = localStorage.getItem("mn_relay_count");
+        
         if(savedID) {
             document.getElementById('devCode').value = savedID;
             myDeviceID = savedID;
-            if(savedCount) selectModel(parseInt(savedCount), true);
-            else goToSelectScreen();
+            
+            if(savedCount) {
+                selectModel(parseInt(savedCount), true);
+            } else {
+                goToSelectScreen();
+            }
         }
     };
 
     function verifyCode() {
         const code = document.getElementById('devCode').value.trim().toUpperCase();
-        if(code.length < 5) return alert("خطأ في الكود");
+        if(code.length < 5) return alert("الرجاء إدخال كود صحيح");
+        
         myDeviceID = code;
         localStorage.setItem("mn_device_sn", myDeviceID);
         goToSelectScreen();
     }
+
     function goToSelectScreen() {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('select-screen').style.display = 'block';
     }
-    
-    function selectModel(count, skip=false) {
-        if(!skip) localStorage.setItem("mn_relay_count", count);
+
+    function selectModel(count, skipSave = false) {
+        if(!skipSave) localStorage.setItem("mn_relay_count", count);
+
+        // إخفاء الشاشات السابقة
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('select-screen').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('status-bar').style.display = 'flex'; // إظهار شريط الحالة
-        document.getElementById('dispCode').innerText = myDeviceID;
         
-        const grid = document.getElementById('buttons-container');
-        grid.className = count >= 8 ? 'control-grid grid-16' : 'control-grid';
-        generateButtons(count);
-        monitorDeviceStatus(); // بدء مراقبة الحالة
-    }
-    function logout() { localStorage.clear(); location.reload(); }
+        // إظهار اللوحة وشريط الحالة
+        document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('status-bar').style.display = 'flex';
+        
+        document.getElementById('dispCode').innerText = myDeviceID;
 
-    // ==========================================
-    // نظام مراقبة حالة الجهاز (Heartbeat Monitor)
-    // ==========================================
-    function monitorDeviceStatus() {
+        // تنسيق الشبكة
+        const container = document.getElementById('buttons-container');
+        container.className = 'control-grid'; 
+        if(count >= 8) container.classList.add('grid-16');
+
+        generateButtons(count);
+        
+        // تشغيل مراقب الاتصال
+        startHeartbeatMonitor();
+    }
+
+    function logout() {
+        localStorage.clear();
+        location.reload();
+    }
+
+    // =================================================
+    // 🔥 نظام مراقبة الاتصال الجديد (الأكثر دقة)
+    // =================================================
+    function startHeartbeatMonitor() {
         const dot = document.getElementById('status-dot');
         const text = document.getElementById('status-text');
-        
-        db.ref('devices/' + myDeviceID + '/last_seen').on('value', (snap) => {
-            const lastTimestamp = snap.val();
-            if(!lastTimestamp) return;
 
-            // التحقق من الوقت الحالي
-            const now = Date.now(); // وقت المتصفح بالمللي ثانية
-            // الفارق بين وقت الجهاز والوقت الحالي
-            // ملاحظة: قد يكون هناك فرق في التوقيت بين السيرفر والجهاز، لذلك نعتمد على التحديث
+        // 1. الاستماع لأي تحديث يأتي من الـ ESP32
+        db.ref('devices/' + myDeviceID + '/last_seen').on('value', (snap) => {
+            // مجرد وصول أي قيمة هنا يعني أن الجهاز حي ويرسل بيانات الآن
+            lastSignalTime = Date.now(); // سجل وقت وصول الإشارة
             
-            checkOnlineStatus(lastTimestamp);
+            // تحديث الواجهة فوراً للأخضر
+            updateStatusUI(true);
         });
 
-        // فحص دوري كل ثانية للتأكد من استمرار التحديث
+        // 2. عداد داخلي يفحص كل ثانية: هل تأخرت الإشارة؟
         setInterval(() => {
-            // سنقرأ القيمة المخزنة محلياً إذا أردنا دقة أعلى، لكن هنا سنعتمد على التفاعل البصري
-            // الطريقة الأبسط: إذا مر 15 ثانية دون تحديث من الفايربيس
-            const lastSeenRef = db.ref('devices/' + myDeviceID + '/last_seen');
-            lastSeenRef.once('value', (snap) => {
-                const serverTime = snap.val();
-                if(serverTime) {
-                   const diff = Date.now() - serverTime;
-                   // إذا كان الفارق أكثر من 15 ثانية يعتبر غير متصل
-                   if(diff < 20000) { // 20 ثانية مهلة
-                       dot.className = "status-dot status-online";
-                       text.innerText = "الجهاز متصل ✅";
-                       text.style.color = "#10b981";
-                   } else {
-                       dot.className = "status-dot status-offline";
-                       text.innerText = "الجهاز غير متصل ❌";
-                       text.style.color = "#ef4444";
-                   }
-                }
-            });
-        }, 3000); // كل 3 ثواني يفحص
+            const now = Date.now();
+            // إذا مر أكثر من 15 ثانية (15000) ولم يتحدث المتغير
+            if (now - lastSignalTime > 15000) {
+                updateStatusUI(false);
+            } else {
+                // ما زلنا في المنطقة الآمنة
+                updateStatusUI(true);
+            }
+        }, 2000);
+
+        function updateStatusUI(isOnline) {
+            // لا تظهر "متصل" إلا إذا وصلنا بيانات ولو مرة واحدة
+            if (lastSignalTime === 0) {
+                text.innerText = "جاري انتظار الإشارة...";
+                dot.className = "status-dot";
+                return;
+            }
+
+            if (isOnline) {
+                dot.className = "status-dot status-online";
+                text.innerText = "الجهاز متصل ✅";
+                text.style.color = "#10b981";
+            } else {
+                dot.className = "status-dot status-offline";
+                text.innerText = "انقطع الاتصال ❌";
+                text.style.color = "#ef4444";
+            }
+        }
     }
-    
-    // باقي الدوال كما هي...
+
     function generateButtons(count) {
         const container = document.getElementById('buttons-container');
         container.innerHTML = "";
@@ -227,42 +258,61 @@
                     </div>
                     <i class="fas fa-power-off relay-icon-main"></i>
                     <button class="toggle-btn" onclick="toggleRelay(${i})">تشغيل</button>
+                    
                     <div id="timer-box-${i}" class="timer-settings">
-                        <div class="timer-row"><span><i class="fas fa-sun" style="color:#fbbf24"></i> بدء:</span><input type="time" class="timer-input" id="t-on-${i}" onchange="saveTimer(${i})"></div>
-                        <div class="timer-row"><span><i class="fas fa-moon" style="color:#64748b"></i> إيقاف:</span><input type="time" class="timer-input" id="t-off-${i}" onchange="saveTimer(${i})"></div>
+                        <div class="timer-row">
+                            <span><i class="fas fa-sun" style="color:#fbbf24"></i> بدء:</span>
+                            <input type="time" class="timer-input" id="t-on-${i}" onchange="saveTimer(${i})">
+                        </div>
+                        <div class="timer-row">
+                            <span><i class="fas fa-moon" style="color:#64748b"></i> إيقاف:</span>
+                            <input type="time" class="timer-input" id="t-off-${i}" onchange="saveTimer(${i})">
+                        </div>
                     </div>
-                </div>`;
+                </div>
+            `;
             listenToRelay(i);
             loadTimer(i);
         }
     }
+
     function toggleTimerView(i) {
         const box = document.getElementById(`timer-box-${i}`);
         box.style.display = box.style.display === 'block' ? 'none' : 'block';
     }
+
     function listenToRelay(i) {
-        db.ref(`devices/${myDeviceID}/r${i}`).on('value', (snap) => {
+        db.ref('devices/' + myDeviceID + '/r' + i).on('value', (snap) => {
             const val = snap.val();
-            const card = document.getElementById(`card-${i}`);
+            const card = document.getElementById('card-' + i);
             const btn = card.querySelector('.toggle-btn');
+            
             if(val == 1) { 
-                card.classList.replace('is-off', 'is-on');
+                card.classList.remove('is-off');
+                card.classList.add('is-on');
                 btn.innerText = "إطفاء";
             } else {
-                card.classList.replace('is-on', 'is-off');
+                card.classList.remove('is-on');
+                card.classList.add('is-off');
                 btn.innerText = "تشغيل";
             }
         });
     }
+
     function toggleRelay(i) {
-        const ref = db.ref(`devices/${myDeviceID}/r${i}`);
-        ref.once('value', (snap) => { ref.set(snap.val() == 1 ? 0 : 1); });
+        const ref = db.ref('devices/' + myDeviceID + '/r' + i);
+        ref.once('value', (snap) => {
+            const current = snap.val() || 0;
+            ref.set(current == 1 ? 0 : 1);
+        });
     }
+
     function saveTimer(i) {
         const onTime = document.getElementById(`t-on-${i}`).value;
         const offTime = document.getElementById(`t-off-${i}`).value;
         db.ref(`devices/${myDeviceID}/timers/${i}`).set({ on: onTime, off: offTime });
     }
+
     function loadTimer(i) {
         db.ref(`devices/${myDeviceID}/timers/${i}`).once('value', (snap) => {
             if(snap.exists()) {
@@ -274,3 +324,4 @@
 </script>
 </body>
 </html>
+
