@@ -34,17 +34,6 @@
         }
         .brand-subtitle { font-size: 14px; color: #6b7280; letter-spacing: 4px; margin-top: 5px; font-weight: bold; }
 
-        /* شارة الحالة العلوية */
-        .status-header {
-            background: white; padding: 10px 20px; border-radius: 50px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
-            display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 14px;
-            transition: 0.3s;
-        }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; background: #ccc; }
-        .status-online { background: #10b981; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
-        .status-offline { background: #ef4444; }
-
         .screen {
             background: var(--card-bg); padding: 30px; border-radius: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; max-width: 450px;
@@ -78,6 +67,7 @@
         .relay-icon-main { font-size: 30px; display: block; margin: 10px auto; color: #cbd5e1; }
         .toggle-btn { width: 100%; padding: 12px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; }
         
+        /* إعدادات المؤقت */
         .timer-settings { display: none; margin-top: 15px; background: #fff; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 12px; }
         .timer-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .timer-input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px; width: 90px; text-align: center; }
@@ -87,7 +77,6 @@
         .is-off .relay-icon-main { color: #94a3b8; }
         .is-off .toggle-btn { background: #e2e8f0; color: #64748b; }
 
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -97,11 +86,6 @@
     <div class="brand-header">
         <h1 class="brand-name">MN ELECTRONICS</h1>
         <div class="brand-subtitle">SMART CONTROL SYSTEMS</div>
-    </div>
-
-    <div id="status-bar" class="status-header" style="display:none;">
-        <div id="status-dot" class="status-dot"></div>
-        <span id="status-text" style="color:#666;">جاري التحقق...</span>
     </div>
 
     <div id="login-screen" class="screen">
@@ -128,123 +112,48 @@
     </div>
 
 <script>
-    const firebaseConfig = {
-        databaseURL: "https://mn-pro-default-rtdb.firebaseio.com/"
-    };
-
+    const firebaseConfig = { databaseURL: "https://mn-pro-default-rtdb.firebaseio.com/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    
     let myDeviceID = "";
-    // متغير لتخزين وقت آخر إشارة وصلت للمتصفح (بتوقيت جهازك أنت)
-    let lastSignalTime = 0; 
 
     window.onload = function() {
         const savedID = localStorage.getItem("mn_device_sn");
         const savedCount = localStorage.getItem("mn_relay_count");
-        
         if(savedID) {
             document.getElementById('devCode').value = savedID;
             myDeviceID = savedID;
-            
-            if(savedCount) {
-                selectModel(parseInt(savedCount), true);
-            } else {
-                goToSelectScreen();
-            }
+            if(savedCount) selectModel(parseInt(savedCount), true);
+            else goToSelectScreen();
         }
     };
 
     function verifyCode() {
         const code = document.getElementById('devCode').value.trim().toUpperCase();
-        if(code.length < 5) return alert("الرجاء إدخال كود صحيح");
-        
+        if(code.length < 5) return alert("خطأ في الكود");
         myDeviceID = code;
         localStorage.setItem("mn_device_sn", myDeviceID);
         goToSelectScreen();
     }
-
+    
     function goToSelectScreen() {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('select-screen').style.display = 'block';
     }
-
-    function selectModel(count, skipSave = false) {
-        if(!skipSave) localStorage.setItem("mn_relay_count", count);
-
-        // إخفاء الشاشات السابقة
+    
+    function selectModel(count, skip=false) {
+        if(!skip) localStorage.setItem("mn_relay_count", count);
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('select-screen').style.display = 'none';
-        
-        // إظهار اللوحة وشريط الحالة
         document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('status-bar').style.display = 'flex';
-        
         document.getElementById('dispCode').innerText = myDeviceID;
-
-        // تنسيق الشبكة
-        const container = document.getElementById('buttons-container');
-        container.className = 'control-grid'; 
-        if(count >= 8) container.classList.add('grid-16');
-
-        generateButtons(count);
         
-        // تشغيل مراقب الاتصال
-        startHeartbeatMonitor();
+        const grid = document.getElementById('buttons-container');
+        grid.className = count >= 8 ? 'control-grid grid-16' : 'control-grid';
+        generateButtons(count);
     }
-
-    function logout() {
-        localStorage.clear();
-        location.reload();
-    }
-
-    // =================================================
-    // 🔥 نظام مراقبة الاتصال الجديد (الأكثر دقة)
-    // =================================================
-    function startHeartbeatMonitor() {
-        const dot = document.getElementById('status-dot');
-        const text = document.getElementById('status-text');
-
-        // 1. الاستماع لأي تحديث يأتي من الـ ESP32
-        db.ref('devices/' + myDeviceID + '/last_seen').on('value', (snap) => {
-            // مجرد وصول أي قيمة هنا يعني أن الجهاز حي ويرسل بيانات الآن
-            lastSignalTime = Date.now(); // سجل وقت وصول الإشارة
-            
-            // تحديث الواجهة فوراً للأخضر
-            updateStatusUI(true);
-        });
-
-        // 2. عداد داخلي يفحص كل ثانية: هل تأخرت الإشارة؟
-        setInterval(() => {
-            const now = Date.now();
-            // إذا مر أكثر من 15 ثانية (15000) ولم يتحدث المتغير
-            if (now - lastSignalTime > 15000) {
-                updateStatusUI(false);
-            } else {
-                // ما زلنا في المنطقة الآمنة
-                updateStatusUI(true);
-            }
-        }, 2000);
-
-        function updateStatusUI(isOnline) {
-            // لا تظهر "متصل" إلا إذا وصلنا بيانات ولو مرة واحدة
-            if (lastSignalTime === 0) {
-                text.innerText = "جاري انتظار الإشارة...";
-                dot.className = "status-dot";
-                return;
-            }
-
-            if (isOnline) {
-                dot.className = "status-dot status-online";
-                text.innerText = "الجهاز متصل ✅";
-                text.style.color = "#10b981";
-            } else {
-                dot.className = "status-dot status-offline";
-                text.innerText = "انقطع الاتصال ❌";
-                text.style.color = "#ef4444";
-            }
-        }
-    }
+    
+    function logout() { localStorage.clear(); location.reload(); }
 
     function generateButtons(count) {
         const container = document.getElementById('buttons-container');
@@ -258,61 +167,47 @@
                     </div>
                     <i class="fas fa-power-off relay-icon-main"></i>
                     <button class="toggle-btn" onclick="toggleRelay(${i})">تشغيل</button>
-                    
                     <div id="timer-box-${i}" class="timer-settings">
-                        <div class="timer-row">
-                            <span><i class="fas fa-sun" style="color:#fbbf24"></i> بدء:</span>
-                            <input type="time" class="timer-input" id="t-on-${i}" onchange="saveTimer(${i})">
-                        </div>
-                        <div class="timer-row">
-                            <span><i class="fas fa-moon" style="color:#64748b"></i> إيقاف:</span>
-                            <input type="time" class="timer-input" id="t-off-${i}" onchange="saveTimer(${i})">
-                        </div>
+                        <div class="timer-row"><span><i class="fas fa-sun" style="color:#fbbf24"></i> بدء:</span><input type="time" class="timer-input" id="t-on-${i}" onchange="saveTimer(${i})"></div>
+                        <div class="timer-row"><span><i class="fas fa-moon" style="color:#64748b"></i> إيقاف:</span><input type="time" class="timer-input" id="t-off-${i}" onchange="saveTimer(${i})"></div>
                     </div>
-                </div>
-            `;
+                </div>`;
             listenToRelay(i);
             loadTimer(i);
         }
     }
-
+    
     function toggleTimerView(i) {
         const box = document.getElementById(`timer-box-${i}`);
         box.style.display = box.style.display === 'block' ? 'none' : 'block';
     }
-
+    
     function listenToRelay(i) {
-        db.ref('devices/' + myDeviceID + '/r' + i).on('value', (snap) => {
+        db.ref(`devices/${myDeviceID}/r${i}`).on('value', (snap) => {
             const val = snap.val();
-            const card = document.getElementById('card-' + i);
+            const card = document.getElementById(`card-${i}`);
             const btn = card.querySelector('.toggle-btn');
-            
             if(val == 1) { 
-                card.classList.remove('is-off');
-                card.classList.add('is-on');
+                card.classList.replace('is-off', 'is-on');
                 btn.innerText = "إطفاء";
             } else {
-                card.classList.remove('is-on');
-                card.classList.add('is-off');
+                card.classList.replace('is-on', 'is-off');
                 btn.innerText = "تشغيل";
             }
         });
     }
-
+    
     function toggleRelay(i) {
-        const ref = db.ref('devices/' + myDeviceID + '/r' + i);
-        ref.once('value', (snap) => {
-            const current = snap.val() || 0;
-            ref.set(current == 1 ? 0 : 1);
-        });
+        const ref = db.ref(`devices/${myDeviceID}/r${i}`);
+        ref.once('value', (snap) => { ref.set(snap.val() == 1 ? 0 : 1); });
     }
-
+    
     function saveTimer(i) {
         const onTime = document.getElementById(`t-on-${i}`).value;
         const offTime = document.getElementById(`t-off-${i}`).value;
         db.ref(`devices/${myDeviceID}/timers/${i}`).set({ on: onTime, off: offTime });
     }
-
+    
     function loadTimer(i) {
         db.ref(`devices/${myDeviceID}/timers/${i}`).once('value', (snap) => {
             if(snap.exists()) {
@@ -324,4 +219,3 @@
 </script>
 </body>
 </html>
-
