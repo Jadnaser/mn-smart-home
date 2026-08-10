@@ -334,10 +334,22 @@
             <div style="margin-top:15px; padding:10px; background:#f0f9ff; border-radius:10px; border:1px solid #bae6fd;">
                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                     <span style="font-size:12px; color:#0369a1;">
-                        <i class="fas fa-wifi"></i> ESP32 IP: <b id="esp32IPDisplay">192.168.4.1</b>
+                        <i class="fas fa-wifi"></i> ESP32 IP
                     </span>
-                    <button onclick="setEsp32IP()" style="padding:5px 10px; border:none; border-radius:5px; background:#0ea5e9; color:white; font-size:11px; cursor:pointer;">
-                        تغيير IP
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="esp32IPInput" value="192.168.4.1" style="padding:5px 8px; border:1px solid #bae6fd; border-radius:5px; font-size:11px; width:140px;">
+                        <button onclick="setEsp32IP()" style="padding:5px 10px; border:none; border-radius:5px; background:#0ea5e9; color:white; font-size:11px; cursor:pointer;">
+                            اتصال
+                        </button>
+                    </div>
+                </div>
+                <div id="esp32Status" style="margin-top:5px; font-size:11px; color:#64748b;"></div>
+                <div style="margin-top:8px; font-size:10px; color:#94a3b8;">
+                    <b>وضع AP:</b> اتصل بشبكة MN-Smart-XXXX | كلمة المرور: 12345678 | IP: 192.168.4.1
+                </div>
+                <div style="margin-top:5px;">
+                    <button onclick="quickConnectAP()" style="padding:4px 8px; border:none; border-radius:5px; background:#10b981; color:white; font-size:10px; cursor:pointer;">
+                        اتصال سريع بوضع AP (192.168.4.1)
                     </button>
                 </div>
             </div>
@@ -354,20 +366,90 @@
 <script>
     // ================= إعدادات ESP32 =================
     let esp32IP = localStorage.getItem('esp32_ip') || '192.168.4.1';
+    let isLocalConnected = false;
+
+    function testESP32Connection() {
+        const statusDiv = document.getElementById('esp32Status');
+        const inputField = document.getElementById('esp32IPInput');
+        if(statusDiv) statusDiv.textContent = 'جاري اختبار الاتصال...';
+
+        fetch('http://' + esp32IP + '/status', { mode: 'cors' })
+            .then(r => r.json())
+            .then(data => {
+                if(inputField) inputField.style.borderColor = '#10b981';
+                if(statusDiv) {
+                    statusDiv.textContent = '✅ متصل بـ ESP32 (محلياً)';
+                    statusDiv.style.color = '#10b981';
+                }
+                isLocalConnected = true;
+                loadRelayStates();
+                loadTimers();
+            })
+            .catch(err => {
+                if(inputField) inputField.style.borderColor = '#f59e0b';
+                if(statusDiv) {
+                    statusDiv.textContent = '⚠️ غير متصل محلياً - استخدام فايربيس';
+                    statusDiv.style.color = '#f59e0b';
+                }
+                isLocalConnected = false;
+                // استخدام فايربيس كبديل
+                loadRelayStatesFromFirebase();
+            });
+    }
 
     function setEsp32IP() {
-        const ip = prompt('أدخل IP جهاز ESP32:', esp32IP);
-        if(ip && ip.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-            esp32IP = ip;
-            localStorage.setItem('esp32_ip', ip);
-            alert('تم حفظ IP: ' + ip);
-            loadTimers();
+        // قراءة IP من حقل الإدخال
+        const inputField = document.getElementById('esp32IPInput');
+        const newIP = inputField ? inputField.value.trim() : esp32IP;
+
+        if(!newIP.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+            alert('❌ تنسيق IP غير صحيح!\nمثال: 192.168.1.100');
+            return;
         }
+
+        const statusDiv = document.getElementById('esp32Status');
+        if(statusDiv) statusDiv.textContent = 'جاري الاتصال...';
+        if(inputField) inputField.style.borderColor = '#bae6fd';
+
+        // اختبار الاتصال أولاً
+        fetch('http://' + newIP + '/status', { mode: 'cors' })
+            .then(r => r.json())
+            .then(data => {
+                esp32IP = newIP;
+                localStorage.setItem('esp32_ip', newIP);
+                if(inputField) {
+                    inputField.value = newIP;
+                    inputField.style.borderColor = '#10b981';
+                }
+                if(statusDiv) {
+                    statusDiv.textContent = '✅ متصل بـ ESP32 (محلياً)';
+                    statusDiv.style.color = '#10b981';
+                }
+                isLocalConnected = true;
+                alert('✅ تم الاتصال بـ ESP32!\nIP: ' + newIP);
+                loadRelayStates();
+                loadTimers();
+            })
+            .catch(err => {
+                if(inputField) inputField.style.borderColor = '#f59e0b';
+                if(statusDiv) {
+                    statusDiv.textContent = '⚠️ غير متصل محلياً - استخدام فايربيس';
+                    statusDiv.style.color = '#f59e0b';
+                }
+                isLocalConnected = false;
+                loadRelayStatesFromFirebase();
+            });
+    }
+
+    function quickConnectAP() {
+        const inputField = document.getElementById('esp32IPInput');
+        if(inputField) inputField.value = '192.168.4.1';
+        setEsp32IP();
     }
 
     // إعدادات فايربيس
     const firebaseConfig = {
-        databaseURL: "https://mn-pro-default-rtdb.firebaseio.com/"
+        databaseURL: "https://mindtech-3b15d-default-rtdb.firebaseio.com/"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -380,8 +462,15 @@
 
     // عند التحميل
     window.onload = function() {
-        // عرض IP ESP32
-        document.getElementById('esp32IPDisplay').textContent = esp32IP;
+        // تهيئة حقل IP ESP32
+        const ipInput = document.getElementById('esp32IPInput');
+        if(ipInput) {
+            ipInput.value = esp32IP;
+            // ضغط Enter للاتصال
+            ipInput.addEventListener('keypress', function(e) {
+                if(e.key === 'Enter') setEsp32IP();
+            });
+        }
 
         const savedID = localStorage.getItem("mn_device_sn");
         const savedCount = localStorage.getItem("mn_relay_count");
@@ -405,6 +494,9 @@
                 }
             });
         });
+
+        // اختبار الاتصال بـ ESP32 تلقائياً
+        testESP32Connection();
     };
 
     function verifyCode() {
@@ -441,6 +533,9 @@
 
         generateButtons(count);
         loadTimers();
+
+        // اختبار الاتصال بـ ESP32 محلياً
+        testESP32Connection();
     }
 
     function updateRelaySelect() {
@@ -481,41 +576,120 @@
                     </button>
                     <span class="status-text" id="txt-${i}">مطفأ</span>
                 </div>`;
+            // إضافة مستمع فايربيس لكل ريليه
             listenToRelay(i);
+        }
+        // تحميل الحالات من ESP32 أو فايربيس
+        loadRelayStates();
+        // تحديث تلقائي كل ثانيتين فقط إذا كان متصل محلياً
+        if(isLocalConnected) {
+            setInterval(loadRelayStates, 2000);
         }
     }
 
     function listenToRelay(i) {
+        // الاستماع لتغييرات فايربيس
         db.ref('devices/' + myDeviceID + '/r' + i).on('value', (snap) => {
             const val = snap.val();
-            const card = document.getElementById('card-' + i);
-            const txt = document.getElementById('txt-' + i);
-            
-            if(!card || !txt) return;
-            
-            if(val == 1) { 
-                card.className = "relay-card is-on";
-                txt.innerText = "يعمل";
-                relayStates[i] = 1;
-            } else {
-                card.className = "relay-card is-off";
-                txt.innerText = "مطفأ";
-                relayStates[i] = 0;
+            if(val !== null) {
+                relayStates[i] = val;
+                updateRelayUI(i, val);
             }
         });
     }
 
     function toggleRelay(i) {
-        const ref = db.ref('devices/' + myDeviceID + '/r' + i);
-        ref.once('value', (snap) => {
-            const current = snap.val() || 0;
-            ref.set(current == 1 ? 0 : 1);
-        });
+        let currentState = relayStates[i];
+        let newState = currentState === 1 ? 0 : 1;
+
+        // 1. تحديث عبر فايربيس (للتحكم عن بعد)
+        if(myDeviceID) {
+            db.ref('devices/' + myDeviceID + '/r' + i).set(newState);
+        }
+
+        // 2. تحديث محلي (في حال كنت على نفس الشبكة)
+        if(isLocalConnected) {
+            fetch('http://' + esp32IP + '/toggle?r=' + i)
+                .then(r => r.text())
+                .then(() => loadRelayStates())
+                .catch(() => console.log('تم إرسال الأمر عبر فايربيس'));
+        } else {
+            relayStates[i] = newState;
+            updateRelayUI(i, newState);
+        }
     }
 
     function setAll(state) {
+        // 1. تحديث عبر فايربيس (للتحكم عن بعد)
+        if(myDeviceID) {
+            for(let i = 0; i < relayCount; i++) {
+                db.ref('devices/' + myDeviceID + '/r' + i).set(state);
+            }
+        }
+
+        // 2. تحديث محلي (في حال كنت على نفس الشبكة)
+        if(isLocalConnected) {
+            fetch('http://' + esp32IP + '/setall?s=' + state)
+                .then(r => r.text())
+                .then(() => loadRelayStates())
+                .catch(() => console.log('تم إرسال الأمر عبر فايربيس'));
+        } else {
+            for(let i = 0; i < relayCount; i++) {
+                relayStates[i] = state;
+                updateRelayUI(i, state);
+            }
+        }
+    }
+
+    function loadRelayStates() {
+        if(isLocalConnected) {
+            // تحميل من ESP32 محلياً
+            fetch('http://' + esp32IP + '/status')
+                .then(r => r.json())
+                .then(data => {
+                    if(data.states) {
+                        data.states.forEach((state, i) => {
+                            relayStates[i] = state;
+                            updateRelayUI(i, state);
+                            // مزامنة الحالة مع فايربيس
+                            if(myDeviceID) {
+                                db.ref('devices/' + myDeviceID + '/r' + i).set(state);
+                            }
+                        });
+                    }
+                })
+                .catch(() => console.log('تعذر الاتصال بـ ESP32'));
+        } else {
+            // تحميل من فايربيس
+            loadRelayStatesFromFirebase();
+        }
+    }
+
+    function loadRelayStatesFromFirebase() {
+        if(!myDeviceID) return;
+
         for(let i = 0; i < relayCount; i++) {
-            db.ref('devices/' + myDeviceID + '/r' + i).set(state);
+            db.ref('devices/' + myDeviceID + '/r' + i).once('value', (snap) => {
+                const val = snap.val();
+                if(val !== null) {
+                    relayStates[i] = val;
+                    updateRelayUI(i, val);
+                }
+            });
+        }
+    }
+
+    function updateRelayUI(i, state) {
+        const card = document.getElementById('card-' + i);
+        const txt = document.getElementById('txt-' + i);
+        if(!card || !txt) return;
+
+        if(state == 1) {
+            card.className = "relay-card is-on";
+            txt.innerText = "يعمل";
+        } else {
+            card.className = "relay-card is-off";
+            txt.innerText = "مطفأ";
         }
     }
 
@@ -536,61 +710,104 @@
         let daysMask = 0;
         selectedDays.forEach(d => daysMask |= (1 << d));
 
-        // حفظ على ESP32 مباشرة
-        fetch('http://' + esp32IP + '/timer/add?relay=' + relay + '&on=' + onTime + '&off=' + offTime + '&days=' + daysMask + '&en=' + enabled)
-            .then(r => r.text())
-            .then(msg => {
-                alert(msg);
-                loadTimers();
-                // إعادة تعيين النموذج
-                document.getElementById('tOnTime').value = '08:00';
-                document.getElementById('tOffTime').value = '18:00';
-                selectedDays.clear();
-                document.querySelectorAll('.day-box').forEach(box => box.classList.remove('selected'));
-            })
-            .catch(() => {
-                if(confirm('فشل الاتصال بـ ESP32. هل تريد تغيير IP الجهاز؟')) {
-                    setEsp32IP();
-                }
-            });
+        if(isLocalConnected) {
+            // حفظ على ESP32 مباشرة
+            fetch('http://' + esp32IP + '/timer/add?relay=' + relay + '&on=' + onTime + '&off=' + offTime + '&days=' + daysMask + '&en=' + enabled)
+                .then(r => r.text())
+                .then(msg => {
+                    alert(msg);
+                    loadTimers();
+                    // إعادة تعيين النموذج
+                    document.getElementById('tOnTime').value = '08:00';
+                    document.getElementById('tOffTime').value = '18:00';
+                    selectedDays.clear();
+                    document.querySelectorAll('.day-box').forEach(box => box.classList.remove('selected'));
+                })
+                .catch(() => {
+                    if(confirm('فشل الاتصال بـ ESP32. هل تريد تغيير IP الجهاز؟')) {
+                        setEsp32IP();
+                    }
+                });
+        } else {
+            alert('⚠️ يجب الاتصال بالشبكة المحلية لإضافة التايمرات\n\nالتايمرات تعمل على ESP32 مباشرة');
+        }
     }
 
     function loadTimers() {
         const list = document.getElementById('timersList');
         if(!list) return;
 
-        // تحميل التايمرات من ESP32
-        fetch('http://' + esp32IP + '/timers')
-            .then(r => r.json())
-            .then(data => {
-                currentTimers = data.timers || [];
+        if(isLocalConnected) {
+            // تحميل التايمرات من ESP32
+            fetch('http://' + esp32IP + '/timers')
+                .then(r => r.json())
+                .then(data => {
+                    currentTimers = data.timers || [];
+                    displayTimers();
+                    // مزامنة التايمرات مع فايربيس للعرض عن بُعد
+                    syncTimersToFirebase();
+                })
+                .catch(() => {
+                    list.innerHTML = '<div style="color:#f00; padding:20px;">خطأ في الاتصال بـ ESP32. <a href="javascript:setEsp32IP()" style="color:#f00;">تغيير IP</a></div>';
+                });
+        } else {
+            // تحميل التايمرات من فايربيس للعرض
+            loadTimersFromFirebase();
+        }
+    }
 
-                if(currentTimers.length === 0) {
-                    list.innerHTML = '<div style="color:#999; padding:20px;">لا توجد تايمرات</div>';
-                    return;
-                }
+    function syncTimersToFirebase() {
+        if(!myDeviceID) return;
+        // حفظ التايمرات في فايربيس للعرض عن بُعد
+        db.ref('devices/' + myDeviceID + '/timers').set(currentTimers);
+    }
 
-                list.innerHTML = currentTimers.map((t, i) => {
-                    const daysText = getDayNames(t.days);
-                    const statusClass = t.enabled ? 't-active' : 't-inactive';
-                    const statusText = t.enabled ? 'مفعل' : 'معطل';
-                    const toggleText = t.enabled ? 'تعطيل' : 'تفعيل';
+    function loadTimersFromFirebase() {
+        if(!myDeviceID) return;
 
-                    return `
-                        <div class="timer-row">
-                            <div class="t-info">
-                                <div><b>جهاز ${t.relay + 1}</b> — ${String(t.onHour).padStart(2,'0')}:${String(t.onMinute).padStart(2,'0')} → ${String(t.offHour).padStart(2,'0')}:${String(t.offMinute).padStart(2,'0')}</div>
-                                <div style="font-size:11px; color:#999; margin-top:4px;">${daysText}</div>
-                            </div>
-                            <span class="t-status ${statusClass}">${statusText}</span>
-                            <button class="btn-small btn-toggle" onclick="toggleTimer(${i})">${toggleText}</button>
-                            <button class="btn-small btn-del" onclick="delTimer(${i})">حذف</button>
-                        </div>`;
-                }).join('');
-            })
-            .catch(() => {
-                list.innerHTML = '<div style="color:#f00; padding:20px;">خطأ في الاتصال بـ ESP32. <a href="javascript:setEsp32IP()" style="color:#f00;">تغيير IP</a></div>';
-            });
+        db.ref('devices/' + myDeviceID + '/timers').once('value', (snap) => {
+            const data = snap.val();
+            if(data) {
+                currentTimers = Array.isArray(data) ? data : Object.values(data);
+            } else {
+                currentTimers = [];
+            }
+            displayTimers();
+        });
+    }
+
+    function displayTimers() {
+        const list = document.getElementById('timersList');
+
+        if(currentTimers.length === 0) {
+            list.innerHTML = '<div style="color:#999; padding:20px;">لا توجد تايمرات</div>';
+            return;
+        }
+
+        let html = '';
+        if(!isLocalConnected) {
+            html = '<div style="background:#fff3cd;padding:8px;border-radius:8px;margin-bottom:10px;font-size:11px;color:#856404;">⚠️ للعرض فقط - اتصل بالشبكة المحلية للتعديل</div>';
+        }
+
+        html += currentTimers.map((t, i) => {
+            const daysText = getDayNames(t.days);
+            const statusClass = t.enabled ? 't-active' : 't-inactive';
+            const statusText = t.enabled ? 'مفعل' : 'معطل';
+            const toggleText = t.enabled ? 'تعطيل' : 'تفعيل';
+
+            return `
+                <div class="timer-row">
+                    <div class="t-info">
+                        <div><b>جهاز ${t.relay + 1}</b> — ${String(t.onHour).padStart(2,'0')}:${String(t.onMinute).padStart(2,'0')} → ${String(t.offHour).padStart(2,'0')}:${String(t.offMinute).padStart(2,'0')}</div>
+                        <div style="font-size:11px; color:#999; margin-top:4px;">${daysText}</div>
+                    </div>
+                    <span class="t-status ${statusClass}">${statusText}</span>
+                    ${isLocalConnected ? `<button class="btn-small btn-toggle" onclick="toggleTimer(${i})">${toggleText}</button>` : ''}
+                    ${isLocalConnected ? `<button class="btn-small btn-del" onclick="delTimer(${i})">حذف</button>` : ''}
+                </div>`;
+        }).join('');
+
+        list.innerHTML = html;
     }
 
     function getDayNames(daysMask) {
@@ -607,22 +824,30 @@
     function delTimer(id) {
         if(!confirm('حذف التايمر؟')) return;
 
-        fetch('http://' + esp32IP + '/timer/del?id=' + id)
-            .then(r => r.text())
-            .then(msg => {
-                alert(msg);
-                loadTimers();
-            })
-            .catch(() => alert('فشل الحذف'));
+        if(isLocalConnected) {
+            fetch('http://' + esp32IP + '/timer/del?id=' + id)
+                .then(r => r.text())
+                .then(msg => {
+                    alert(msg);
+                    loadTimers();
+                })
+                .catch(() => alert('فشل الحذف'));
+        } else {
+            alert('⚠️ يجب الاتصال بالشبكة المحلية لحذف التايمرات');
+        }
     }
 
     function toggleTimer(id) {
-        fetch('http://' + esp32IP + '/timer/toggle?id=' + id)
-            .then(r => r.text())
-            .then(msg => {
-                loadTimers();
-            })
-            .catch(() => alert('فشل التعديل'));
+        if(isLocalConnected) {
+            fetch('http://' + esp32IP + '/timer/toggle?id=' + id)
+                .then(r => r.text())
+                .then(msg => {
+                    loadTimers();
+                })
+                .catch(() => alert('فشل التعديل'));
+        } else {
+            alert('⚠️ يجب الاتصال بالشبكة المحلية لتعديل التايمرات');
+        }
     }
 
     // ================= التايمرات تعمل على ESP32 مباشرة =================
